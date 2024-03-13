@@ -1,0 +1,66 @@
+package ondicho.co.ke.RentalManangementSystemBackend.config;
+
+import jakarta.annotation.Nonnull;
+import lombok.RequiredArgsConstructor;
+import ondicho.co.ke.RentalManangementSystemBackend.models.Auth.User;
+import ondicho.co.ke.RentalManangementSystemBackend.repositories.Auth.UserRepository;
+import ondicho.co.ke.RentalManangementSystemBackend.services.Auth.JwtService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
+import org.springframework.stereotype.Component;
+
+import javax.servlet.FilterChain;
+import javax.servlet.ServletException;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import java.io.IOException;
+
+@Component
+@RequiredArgsConstructor
+public class JWTAuthenticationFilter {
+
+    private final JwtService jwtService;
+    @Autowired
+    UserDetailsService userDetailsService;
+
+    @Autowired
+    UserRepository userRepository;
+    @Override
+    protected void doFilterInternal(
+            @Nonnull HttpServletRequest request, @Nonnull HttpServletResponse response, @Nonnull FilterChain filterChain
+    ) throws ServletException, IOException {
+        final String authHeader=request.getHeader("Authorization");
+        final String jwt;
+        final String userEmail;
+
+        if(authHeader==null ||!authHeader.startsWith("Bearer ")){
+            filterChain.doFilter(request,response);
+            return;
+        }
+//      retrieve token from header
+        jwt=authHeader.substring(7);
+//        extract user email
+        userEmail=jwtService.extractUsername(jwt);
+        if(userEmail!=null && SecurityContextHolder.getContext().getAuthentication()==null){
+            UserDetails userDetails=this.userDetailsService.loadUserByUsername(userEmail);
+            if(jwtService.isTokenValid(jwt,userDetails)){
+                User user1=userRepository.findByEmail(userDetails.getUsername()).get();
+
+                UsernamePasswordAuthenticationToken authToken=new UsernamePasswordAuthenticationToken(
+                        userDetails,null,userDetails.getAuthorities()
+                );
+                authToken.setDetails(
+                        new WebAuthenticationDetailsSource().buildDetails(request)
+                );
+//                update context
+                SecurityContextHolder.getContext().setAuthentication(authToken);
+            }
+        }
+//        pass context to next filter for processing
+        filterChain.doFilter(request,response);
+    }
+}

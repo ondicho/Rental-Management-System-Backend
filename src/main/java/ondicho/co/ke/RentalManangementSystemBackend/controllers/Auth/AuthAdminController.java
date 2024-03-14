@@ -105,7 +105,7 @@ public class AuthAdminController {
     }
 
     @GetMapping(value = "/groups")
-    @Operation(summary = "Fetch all groups")
+    @Operation(summary = "Fetch all group users")
     @ApiResponse(responseCode = "200", description = "Successful operation",
             content = @io.swagger.v3.oas.annotations.media.Content(
                     mediaType = "application/json",

@@ -1,16 +1,16 @@
 package ondicho.co.ke.RentalManangementSystemBackend.models.Payment;
 
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+
+import jakarta.persistence.Column;
+import lombok.*;
 
 @Getter
 @Setter
 @AllArgsConstructor
 @NoArgsConstructor
-public class RegisterUrlRequest {
-
+@ToString
+@Builder
+public class RegisterUrlDTO {
     private String ShortCode;
     private String ResponseType;
     private String ConfirmationURL;

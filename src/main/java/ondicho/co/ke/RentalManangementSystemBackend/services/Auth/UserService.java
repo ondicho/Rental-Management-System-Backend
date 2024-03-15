@@ -82,9 +82,9 @@ public class UserService {
         try {
 
             Pageable pageable = PageRequest.of(pageNo, pageSize, Sort.by(sortBy));
-            Page<User> transactions = userRepository.findAll(pageable);
+            Page<User> users = userRepository.findAll(pageable);
 
-            return responseHandler.generateResponse("success", transactions, null);
+            return responseHandler.generateResponse("success", users, null);
         } catch (Exception e) {
             return responseHandler.generateResponse("fail", null, e.getMessage());
         }

@@ -22,11 +22,12 @@ public class Tenant {
     @Column(nullable = false)
     private String name;
 
-    @Column(nullable = false,unique = true)
+    @Column(unique = true)
     private String idNumber;
 
     @Column(nullable = false,unique = true)
     private String phoneNumber;
+
 
     @ElementCollection
     @CollectionTable(name = "tenant_phone_numbers", joinColumns = @JoinColumn(name = "tenant_id"))

@@ -41,5 +41,11 @@ public class ApartmentBill {
     @Column
     private LocalDate paidOn;
 
+    @Column
+    private long paidAmount;
+
+    @Column
+    private Boolean fixed;
+
 
 }

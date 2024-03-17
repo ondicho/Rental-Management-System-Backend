@@ -2,7 +2,9 @@ package ondicho.co.ke.RentalManangementSystemBackend.models.Property;
 
 public enum PaymentAccountType {
     TILL_NUMBER("Buy Goods"),
-    PAY_BILL("Pay Bill");
+    PAY_BILL("Pay Bill"),
+
+    BANK("Bank Account");
 
     private final String description;
 

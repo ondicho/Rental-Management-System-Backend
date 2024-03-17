@@ -20,6 +20,9 @@ public class PaymentAccount {
     @Column(nullable = false)
     private String shortCode;
 
+    @Column
+    private String accountNumber;
+
     @Column(nullable = false)
     private PaymentAccountType accountType;
 

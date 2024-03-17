@@ -19,6 +19,7 @@ import java.util.Set;
 @ToString
 @Entity(name = "users")
 @Builder
+@Inheritance(strategy = InheritanceType.JOINED)
 public class User implements UserDetails {
 
     @Id

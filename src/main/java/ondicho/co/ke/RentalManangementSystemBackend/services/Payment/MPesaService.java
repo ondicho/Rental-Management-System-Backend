@@ -60,8 +60,9 @@ public class MPesaService {
             LOGGER.error("Receive M-Pesa callback error : {}, {}", e.getMessage(), e);
         }
         return MpesaValidationResponse.builder()
-                .ResultCode("0")
-                .ResultDesc("Accepted")
+//                invalid shortcode add invalid account number for checking landlord payment accounts.
+                .ResultCode("C2B00015")
+                .ResultDesc("Rejected")
                 .build();
     }
 
@@ -74,23 +75,22 @@ public class MPesaService {
                 mPesaTransactionRepository.save(mPesaTransaction);
                 LOGGER.info("Saved M-PesaTransaction : {}", mPesaTransaction);
             }
-            LOGGER.info("Confirmation: Invalid payment account ");
 
         } catch (Exception e) {
             LOGGER.error("Receive M-Pesa callback error : {}, {}", e.getMessage(), e);
         }
     }
 
-    public Map<String, Object> registerUrl(RegisterUrlDTO registerUrlDTO) {
+    public Map<String, Object> registerUrl(Map<String, Object> registerUrlDTO) {
         try {
-            LOGGER.info("DTO: "+registerUrlDTO.getResponseType());
+            LOGGER.info("DTO: "+registerUrlDTO);
             Map<String, Object> darajaResponse = HttpUtil.darajaRequest(registerUrlEndpoint, registerUrlDTO);
             if (darajaResponse!=null&&darajaResponse.get("ResponseDescription").toString().equalsIgnoreCase("success")) {
                 RegisterUrl registerUrl= RegisterUrl.builder()
-                        .shortCode(registerUrlDTO.getShortCode())
-                        .validationUrl(registerUrlDTO.getValidationURL())
-                        .confirmationUrl(registerUrlDTO.getConfirmationURL())
-                        .responseType(registerUrlDTO.getResponseType())
+                        .shortCode(registerUrlDTO.get("ShortCode").toString())
+                        .validationUrl(registerUrlDTO.get("ValidationURL").toString())
+                        .confirmationUrl(registerUrlDTO.get("ConfirmationURL").toString())
+                        .responseType(registerUrlDTO.get("ResponseType").toString())
                         .build();
                 registerUrlRepository.save(registerUrl);
                 LOGGER.info("Successful registration");

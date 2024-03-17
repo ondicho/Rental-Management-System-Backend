@@ -39,7 +39,7 @@ public class MPesaController {
                     mediaType = "application/json",
                     schema = @io.swagger.v3.oas.annotations.media.Schema(implementation = RegisterUrl.class)
             ))
-    public Map<String, Object> registerUrl(@RequestBody RegisterUrlDTO registerUrlDTO) {
+    public Map<String, Object> registerUrl(@RequestBody Map<String,Object> registerUrlDTO) {
         return mPesaService.registerUrl(registerUrlDTO);
     }
 

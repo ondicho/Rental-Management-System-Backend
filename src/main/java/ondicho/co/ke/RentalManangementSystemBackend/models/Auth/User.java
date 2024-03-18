@@ -41,6 +41,9 @@ public class User implements UserDetails {
     @Column(nullable = false)
     private Boolean isEnabled;
 
+    @Column(nullable = false)
+    private Boolean isLandlord;
+
 
 
     @ManyToMany(fetch = FetchType.EAGER, cascade = CascadeType.ALL)

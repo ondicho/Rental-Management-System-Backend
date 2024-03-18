@@ -26,6 +26,10 @@ public class PaymentAccount {
     @Column(nullable = false)
     private PaymentAccountType accountType;
 
+    @Column(nullable = false)
+    @Enumerated(EnumType.STRING)
+    private ApartmentBillType billType;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "property_id")
     private Property property;

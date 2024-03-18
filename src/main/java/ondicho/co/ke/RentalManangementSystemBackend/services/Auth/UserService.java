@@ -78,6 +78,18 @@ public class UserService {
         return responseHandler.generateResponse("fail", null, "User does not exist");
     }
 
+    public User fetchUser(String email) {
+        try {
+            Optional<User> user = userRepository.findByEmail(email);
+            if (user.isPresent()) {
+                return user.get();
+            }
+        } catch (Exception e) {
+            LOGGER.error("get user stacktrace : " + e);
+        }
+        return null;
+    }
+
     public Map<String, Object> fetchAllUsers(int pageNo, int pageSize, String sortBy) {
         try {
 

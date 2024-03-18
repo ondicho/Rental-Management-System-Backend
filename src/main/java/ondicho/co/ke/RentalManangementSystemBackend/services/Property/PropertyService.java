@@ -1,7 +1,11 @@
 package ondicho.co.ke.RentalManangementSystemBackend.services.Property;
 
+import jakarta.servlet.http.HttpServletRequest;
+import ondicho.co.ke.RentalManangementSystemBackend.models.Auth.AuthenticationResponse;
+import ondicho.co.ke.RentalManangementSystemBackend.models.Auth.User;
 import ondicho.co.ke.RentalManangementSystemBackend.models.Property.*;
 import ondicho.co.ke.RentalManangementSystemBackend.repositories.Property.*;
+import ondicho.co.ke.RentalManangementSystemBackend.services.Auth.UserService;
 import ondicho.co.ke.RentalManangementSystemBackend.util.ResponseHandler;
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.CellType;
@@ -48,47 +52,153 @@ public class PropertyService {
     @Autowired
     PaymentAccountRepository paymentAccountRepository;
 
+    @Autowired
+    UserService userService;
+
     //    Create property to-do:
 //    1.Check if landlord exists and is active
 //    2.Create property
 //    3.Register property block=>floors=>apartments=>tenants=>apartmentBills
 //    4.Register payment accounts and register urls
 //    5.
-    public ResponseEntity<Map<String, Object>> createProperty(MultipartFile file) {
+    public ResponseEntity<Map<String, Object>> createProperty(MultipartFile file, HttpServletRequest request) {
         try {
+
+            AuthenticationResponse token = (AuthenticationResponse) request.getAttribute("token");
             LOGGER.info("Create Property: Start");
             LOGGER.info("Beginning Excel data processing");
+
             XSSFWorkbook wb = new XSSFWorkbook(file.getInputStream());
-            XSSFSheet ws = wb.getSheetAt(0); // Assuming you want the first sheet
+            List<Property> properties = new ArrayList<>();
+            List<Tenant> tenants = new ArrayList<>();
 
-            // Process the header row
-            Row headerRow = ws.getRow(0);
-            List<String> headers = new ArrayList<>();
-            for (Cell cell : headerRow) {
-                headers.add(cell.getStringCellValue());
-            }
+//            for (int sheetIndex = 0; sheetIndex < wb.getNumberOfSheets(); sheetIndex++) {
+                XSSFSheet ws = wb.getSheetAt(0);
+                String sheetName = ws.getSheetName();
 
+                // Process the header row
+                Row headerRow = ws.getRow(0);
+                List<String> headers = new ArrayList<>();
+                for (Cell cell : headerRow) {
+                    headers.add(cell.getStringCellValue());
+                }
 
-
-            // Process the rest of the rows
-            Iterator<Row> rowIterator = ws.iterator();
-            rowIterator.next(); // Skip the header row
-            while (rowIterator.hasNext()) {
-                Map<String, String> rowData = new HashMap<>();
-                Row row = rowIterator.next();
-                for (int i = 0; i < headers.size(); i++) {
-                    Cell cell = row.getCell(i);
-                    if (cell != null) {
-                        String columnHeader = headers.get(i);
-                        if (columnHeader != null) {
-                            String cellValue = getStringCellValue(cell).trim(); // Trim whitespaces
-                            rowData.put(columnHeader, cellValue);
+                // Process the rest of the rows
+                Iterator<Row> rowIterator = ws.iterator();
+                rowIterator.next(); // Skip the header row
+                while (rowIterator.hasNext()) {
+                    Row row = rowIterator.next();
+                    Map<String, String> rowData = new HashMap<>();
+                    for (int i = 0; i < headers.size(); i++) {
+                        Cell cell = row.getCell(i);
+                        if (cell != null) {
+                            String columnHeader = headers.get(i);
+                            if (columnHeader != null) {
+                                String cellValue = cell.getStringCellValue().trim(); // Trim whitespaces
+                                rowData.put(columnHeader, cellValue);
+                            }
                         }
+                    }
+//                    register property
+                    User user = userService.fetchUser(token.getEmail());
+                    if (user != null) {
+//                    check if landlord exists
+                        Landlord landlord = Landlord.builder()
+                                .userAccount(user)
+                                .build();
 
-//                        crunch row data
+                        landlord = landlordRepository.save(landlord);
+                        // Map rowData to your models based on the sheet name
+//                    if ("properties".equalsIgnoreCase(sheetName)) {
+
+//                    check if property with same name exists,if it does add details of row as another payment type
+                        Optional<Property> existingPropertyOptional = propertyRepository.findByName(rowData.get("property_name").toUpperCase());
+
+                        if (existingPropertyOptional.isPresent()) {
+                            Property existingProperty = existingPropertyOptional.get();
+                            Set<PaymentAccount> paymentAccounts = existingProperty.getPaymentAccounts();
+                            PaymentAccount paymentAccount = PaymentAccount.builder()
+                                    .shortCode(rowData.get("shortcode"))
+                                    .accountNumber(rowData.get("account_number"))
+                                    .accountType(PaymentAccountType.valueOf(rowData.get("account_type")))
+                                    .billType(ApartmentBillType.valueOf(rowData.get("purpose")))
+                                    .property(existingProperty)
+                                    .build();
+                            paymentAccounts.add(paymentAccount);
+
+                            existingProperty.setPaymentAccounts(paymentAccounts);
+
+                            propertyRepository.save(existingProperty);
+                        } else {
+                            Property property = Property.builder()
+                                    .name(rowData.get("property_name"))
+                                    .landlord(landlord)
+                                    .build();
+
+                            property = propertyRepository.save(property);
+
+                            Set<PaymentAccount> paymentAccounts = property.getPaymentAccounts();
+                            PaymentAccount paymentAccount = PaymentAccount.builder()
+                                    .shortCode(rowData.get("shortcode"))
+                                    .accountNumber(rowData.get("account_number"))
+                                    .accountType(PaymentAccountType.valueOf(rowData.get("account_type")))
+                                    .billType(ApartmentBillType.valueOf(rowData.get("purpose")))
+                                    .property(property)
+                                    .build();
+                            paymentAccounts.add(paymentAccount);
+
+                            property.setPaymentAccounts(paymentAccounts);
+
+                            property = propertyRepository.save(property);
+
+                            properties.add(property);
+                        }
                     }
                 }
+
+            XSSFSheet sheet2 = wb.getSheetAt(1);
+
+            // Process the header row
+            Row sheet2HeaderRow = sheet2.getRow(0);
+            List<String> sheet2Headers = new ArrayList<>();
+            for (Cell cell : sheet2HeaderRow) {
+                sheet2Headers.add(cell.getStringCellValue());
             }
+
+            // Process the rest of the rows
+            Iterator<Row> sheet2RowIterator = sheet2.iterator();
+            sheet2RowIterator.next(); // Skip the header row
+            while (sheet2RowIterator.hasNext()) {
+                Row row = sheet2RowIterator.next();
+                Map<String, String> rowData = new HashMap<>();
+                for (int i = 0; i < sheet2Headers.size(); i++) {
+                    Cell cell = row.getCell(i);
+                    if (cell != null) {
+                        String columnHeader = sheet2Headers.get(i);
+                        if (columnHeader != null) {
+                            String cellValue = cell.getStringCellValue().trim(); // Trim whitespaces
+                            rowData.put(columnHeader, cellValue);
+                        }
+                    }
+                }
+
+                String propertyName=rowData.get("property_name");
+                String blockName=rowData.get("property_name");
+                String floorName=rowData.get("property_name");
+                String apartmentName=rowData.get("property_name");
+                String tenantName=rowData.get("property_name");
+                String idNumber=rowData.get("property_name");
+                String phoneNumber=rowData.get("property_name");
+                String otherPhoneNumbers=rowData.get("property_name");
+                String moveInDate=rowData.get("property_name");
+                String rent=rowData.get("property_name");
+                String garbage=rowData.get("property_name");
+                String serviceCharge=rowData.get("property_name");
+
+
+
+            }
+//            }
 
             LOGGER.info("Create Property: Complete");
 

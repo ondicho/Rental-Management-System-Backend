@@ -5,6 +5,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
+import ondicho.co.ke.RentalManangementSystemBackend.models.Auth.AuthenticationResponse;
 import ondicho.co.ke.RentalManangementSystemBackend.models.Auth.User;
 import ondicho.co.ke.RentalManangementSystemBackend.repositories.Auth.UserRepository;
 import ondicho.co.ke.RentalManangementSystemBackend.services.Auth.JwtService;
@@ -57,6 +58,14 @@ public class JWTAuthenticationFilter extends OncePerRequestFilter {
                 );
 //                update context
                 SecurityContextHolder.getContext().setAuthentication(authToken);
+
+                AuthenticationResponse token= AuthenticationResponse.builder()
+                        .access_token(jwt)
+                        .email(userEmail)
+                        .role(user1.getUserRoles())
+                        .group(user1.getGroups())
+                        .build();
+                request.setAttribute("token", token);
             }
         }
 //        pass context to next filter for processing

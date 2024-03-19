@@ -69,92 +69,103 @@ public class PropertyService {
             LOGGER.info("Beginning Excel data processing");
 
             XSSFWorkbook wb = new XSSFWorkbook(file.getInputStream());
-            List<Property> properties = new ArrayList<>();
+            Set<Property> properties = new HashSet<Property>();
             List<Tenant> tenants = new ArrayList<>();
 
 //            for (int sheetIndex = 0; sheetIndex < wb.getNumberOfSheets(); sheetIndex++) {
-                XSSFSheet ws = wb.getSheetAt(0);
-                String sheetName = ws.getSheetName();
+            XSSFSheet ws = wb.getSheetAt(0);
+            String sheetName = ws.getSheetName();
 
-                // Process the header row
-                Row headerRow = ws.getRow(0);
-                List<String> headers = new ArrayList<>();
-                for (Cell cell : headerRow) {
-                    headers.add(cell.getStringCellValue());
-                }
+            // Process the header row
+            Row headerRow = ws.getRow(0);
+            List<String> headers = new ArrayList<>();
+            for (Cell cell : headerRow) {
+                headers.add(cell.getStringCellValue());
+            }
 
-                // Process the rest of the rows
-                Iterator<Row> rowIterator = ws.iterator();
-                rowIterator.next(); // Skip the header row
-                while (rowIterator.hasNext()) {
-                    Row row = rowIterator.next();
-                    Map<String, String> rowData = new HashMap<>();
-                    for (int i = 0; i < headers.size(); i++) {
-                        Cell cell = row.getCell(i);
-                        if (cell != null) {
-                            String columnHeader = headers.get(i);
-                            if (columnHeader != null) {
-                                String cellValue = cell.getStringCellValue().trim(); // Trim whitespaces
-                                rowData.put(columnHeader, cellValue);
-                            }
+            // Process the rest of the rows
+            Iterator<Row> rowIterator = ws.iterator();
+            rowIterator.next(); // Skip the header row
+            while (rowIterator.hasNext()) {
+                Row row = rowIterator.next();
+                Map<String, String> rowData = new HashMap<>();
+                for (int i = 0; i < headers.size(); i++) {
+                    Cell cell = row.getCell(i);
+                    if (cell != null) {
+                        String columnHeader = headers.get(i);
+                        if (columnHeader != null) {
+                            String cellValue = cell.getStringCellValue().trim(); // Trim whitespaces
+                            rowData.put(columnHeader, cellValue);
                         }
                     }
+                }
 //                    register property
-                    User user = userService.fetchUser(token.getEmail());
-                    if (user != null) {
+                User user = userService.fetchUser(token.getEmail());
+                if (user != null) {
 //                    check if landlord exists
-                        Landlord landlord = Landlord.builder()
-                                .userAccount(user)
-                                .build();
+                    Landlord landlord = Landlord.builder()
+                            .userAccount(user)
+                            .build();
 
-                        landlord = landlordRepository.save(landlord);
-                        // Map rowData to your models based on the sheet name
+                    landlord = landlordRepository.save(landlord);
+
+                    LOGGER.info("Create Landlord: success");
+                    // Map rowData to your models based on the sheet name
 //                    if ("properties".equalsIgnoreCase(sheetName)) {
 
 //                    check if property with same name exists,if it does add details of row as another payment type
-                        Optional<Property> existingPropertyOptional = propertyRepository.findByName(rowData.get("property_name").toUpperCase());
+                    Optional<Property> existingPropertyOptional = propertyRepository.findByName(rowData.get("property_name").toUpperCase());
 
-                        if (existingPropertyOptional.isPresent()) {
-                            Property existingProperty = existingPropertyOptional.get();
-                            Set<PaymentAccount> paymentAccounts = existingProperty.getPaymentAccounts();
-                            PaymentAccount paymentAccount = PaymentAccount.builder()
-                                    .shortCode(rowData.get("shortcode"))
-                                    .accountNumber(rowData.get("account_number"))
-                                    .accountType(PaymentAccountType.valueOf(rowData.get("account_type")))
-                                    .billType(ApartmentBillType.valueOf(rowData.get("purpose")))
-                                    .property(existingProperty)
-                                    .build();
-                            paymentAccounts.add(paymentAccount);
+                    if (existingPropertyOptional.isPresent()) {
+                        Property existingProperty = existingPropertyOptional.get();
+                        Set<PaymentAccount> paymentAccounts = existingProperty.getPaymentAccounts();
+                        PaymentAccount paymentAccount = PaymentAccount.builder()
+                                .shortCode(rowData.get("shortcode"))
+                                .accountNumber(rowData.get("account_number"))
+                                .accountType(PaymentAccountType.valueOf(rowData.get("account_type")))
+                                .billType(ApartmentBillType.valueOf(rowData.get("purpose")))
+                                .property(existingProperty)
+                                .build();
+                        paymentAccount = paymentAccountRepository.save(paymentAccount);
+                        paymentAccounts.add(paymentAccount);
 
-                            existingProperty.setPaymentAccounts(paymentAccounts);
+                        existingProperty.setPaymentAccounts(paymentAccounts);
 
-                            propertyRepository.save(existingProperty);
-                        } else {
-                            Property property = Property.builder()
-                                    .name(rowData.get("property_name"))
-                                    .landlord(landlord)
-                                    .build();
+                        propertyRepository.save(existingProperty);
+                        LOGGER.info("Existing property found and payment account added");
+                        properties.add(existingProperty);
 
-                            property = propertyRepository.save(property);
+                    } else {
+                        Property property = Property.builder()
+                                .name(rowData.get("property_name"))
+                                .landlord(landlord)
+                                .build();
 
-                            Set<PaymentAccount> paymentAccounts = property.getPaymentAccounts();
-                            PaymentAccount paymentAccount = PaymentAccount.builder()
-                                    .shortCode(rowData.get("shortcode"))
-                                    .accountNumber(rowData.get("account_number"))
-                                    .accountType(PaymentAccountType.valueOf(rowData.get("account_type")))
-                                    .billType(ApartmentBillType.valueOf(rowData.get("purpose")))
-                                    .property(property)
-                                    .build();
-                            paymentAccounts.add(paymentAccount);
+                        property = propertyRepository.save(property);
+                        LOGGER.info("Create new Property: success");
 
-                            property.setPaymentAccounts(paymentAccounts);
+                        Set<PaymentAccount> paymentAccounts = property.getPaymentAccounts();
+                        PaymentAccount paymentAccount = PaymentAccount.builder()
+                                .shortCode(rowData.get("shortcode"))
+                                .accountNumber(rowData.get("account_number"))
+                                .accountType(PaymentAccountType.valueOf(rowData.get("account_type")))
+                                .billType(ApartmentBillType.valueOf(rowData.get("purpose")))
+                                .property(property)
+                                .build();
+                        paymentAccount = paymentAccountRepository.save(paymentAccount);
+                        paymentAccounts.add(paymentAccount);
 
-                            property = propertyRepository.save(property);
+                        property.setPaymentAccounts(paymentAccounts);
 
-                            properties.add(property);
-                        }
+                        property = propertyRepository.save(property);
+
+                        properties.add(property);
                     }
+                    landlord.setProperties(properties);
+                    landlordRepository.save(landlord);
+                    LOGGER.info("All landlord properties updated : success");
                 }
+            }
 
             XSSFSheet sheet2 = wb.getSheetAt(1);
 
@@ -169,6 +180,7 @@ public class PropertyService {
             Iterator<Row> sheet2RowIterator = sheet2.iterator();
             sheet2RowIterator.next(); // Skip the header row
             while (sheet2RowIterator.hasNext()) {
+                LOGGER.info("Begin Sheet 2 processing");
                 Row row = sheet2RowIterator.next();
                 Map<String, String> rowData = new HashMap<>();
                 for (int i = 0; i < sheet2Headers.size(); i++) {
@@ -182,23 +194,282 @@ public class PropertyService {
                     }
                 }
 
-                String propertyName=rowData.get("property_name");
-                String blockName=rowData.get("property_name");
-                String floorName=rowData.get("property_name");
-                String apartmentName=rowData.get("property_name");
-                String tenantName=rowData.get("property_name");
-                String idNumber=rowData.get("property_name");
-                String phoneNumber=rowData.get("property_name");
-                String otherPhoneNumbers=rowData.get("property_name");
-                String moveInDate=rowData.get("property_name");
-                String rent=rowData.get("property_name");
-                String garbage=rowData.get("property_name");
-                String serviceCharge=rowData.get("property_name");
+                String propertyName = rowData.get("property_name");
+                String blockName = rowData.get("block");
+                String floorName = rowData.get("floor");
+                String apartmentName = rowData.get("apartment");
+                String tenantName = rowData.get("tenant_name");
+                String idNumber = rowData.get("id_number");
+                String phoneNumber = rowData.get("phone_number");
+                String otherPhoneNumbers = rowData.get("other_phone_numbers");
+                String moveInDate = rowData.get("move_in_date");
+                String rent = rowData.get("rent");
+                String garbage = rowData.get("garbage");
+                String serviceCharge = rowData.get("service_charge");
 
+                Optional<Property> propertyOptional = propertyRepository.findByName(propertyName.toUpperCase());
+                if (propertyOptional.isPresent()) {
+                    LOGGER.info("Property found");
+                    Property property = propertyOptional.get();
+                    Set<Block> blocks = property.getBlocks();
+//                    use stream to search for block name
+                    Optional<Block> existingBlock = blocks.stream()
+                            .filter(block -> block.getName().equals(blockName))
+                            .findAny();
+                    if (existingBlock.isPresent()) {
+                        LOGGER.info("Block found");
+                        Block block = existingBlock.get();
+                        Set<Floor> floors = block.getFloors();
+//                        use stream to search for floor name
 
+                        Optional<Floor> existingFloor = floors.stream()
+                                .filter(floor -> floor.getName().equals(floorName))
+                                .findAny();
+                        if (existingFloor.isPresent()) {
+                            LOGGER.info("Floor found");
+                            Floor floor = existingFloor.get();
+
+                            Set<Apartment> apartments = floor.getApartments();
+
+                            Optional<Apartment> existingApartment = apartments.stream()
+                                    .filter(apartment -> apartment.getName().equals(apartmentName))
+                                    .findAny();
+                            if (existingApartment.isPresent()) {
+//                                check apartment bills
+                                LOGGER.info("Apartment found");
+
+                                continue;
+                            } else {
+                                LOGGER.info("Apartment not found");
+                                Apartment apartment = Apartment.builder()
+                                        .name(apartmentName)
+                                        .floor(floor)
+                                        .build();
+                                apartment = apartmentRepository.save(apartment);
+                                Set<ApartmentBill> apartmentBills = apartment.getApartmentBills();
+//                                check if rent is null before doing this,also check if bill type exists
+                                if (rent != null) {
+                                    ApartmentBill rentBill = ApartmentBill.builder()
+                                            .billType(ApartmentBillType.rent)
+                                            .billAmount(Long.parseLong(rent))
+                                            .apartment(apartment)
+                                            .fixed(true)
+                                            .build();
+                                    apartmentBills.add(rentBill);
+                                }
+
+//                                check if garbage is null before doing this
+                                if (garbage != null) {
+                                    ApartmentBill garbageBill = ApartmentBill.builder()
+                                            .billType(ApartmentBillType.garbage)
+                                            .billAmount(Long.parseLong(garbage))
+                                            .apartment(apartment)
+                                            .fixed(true)
+                                            .build();
+                                    apartmentBills.add(garbageBill);
+                                }
+
+//                                check if serviceCharge is null before doing this
+                                if (serviceCharge != null) {
+                                    ApartmentBill serviceChargeBill = ApartmentBill.builder()
+                                            .billType(ApartmentBillType.service_charge)
+                                            .billAmount(Long.parseLong(serviceCharge))
+                                            .apartment(apartment)
+                                            .fixed(true)
+                                            .build();
+                                    apartmentBills.add(serviceChargeBill);
+                                }
+                                LOGGER.info("Bills created");
+//                                create Tenant
+                                Tenant tenant = Tenant.builder()
+                                        .name(tenantName)
+                                        .phoneNumber(phoneNumber)
+                                        .apartment(apartment)
+                                        .build();
+
+                                tenant = tenantRepository.save(tenant);
+
+                                apartment.setApartmentBills(apartmentBills);
+                                apartment.setTenant(tenant);
+                                apartment.setOccupancy(ApartmentOccupancy.occupied);
+
+                                apartmentRepository.save(apartment);
+                                apartments.add(apartment);
+
+                                LOGGER.info("Tenant created");
+                            }
+                            floor.setApartments(apartments);
+                            floorRepository.save(floor);
+
+                            LOGGER.info("Floor updated");
+                        } else {
+                            LOGGER.info("Floor not found");
+                            Floor floor = Floor.builder()
+                                    .name(floorName)
+                                    .block(block)
+                                    .build();
+                            floor = floorRepository.save(floor);
+
+                            Set<Apartment> apartments = floor.getApartments();
+
+                            Optional<Apartment> existingApartment = apartments.stream()
+                                    .filter(apartment -> apartment.getName().equals(apartmentName))
+                                    .findAny();
+                            if (existingApartment.isPresent()) {
+                                LOGGER.info("Apartment found");
+//                                check apartment bills
+
+                                continue;
+                            } else {
+                                LOGGER.info("Apartment not found");
+                                Apartment apartment = Apartment.builder()
+                                        .name(apartmentName)
+                                        .floor(floor)
+                                        .build();
+                                apartment = apartmentRepository.save(apartment);
+                                Set<ApartmentBill> apartmentBills = apartment.getApartmentBills();
+//                                check if rent is null before doing this,also check if bill type exists
+                                if (rent != null) {
+                                    ApartmentBill rentBill = ApartmentBill.builder()
+                                            .billType(ApartmentBillType.rent)
+                                            .billAmount(Long.parseLong(rent))
+                                            .apartment(apartment)
+                                            .fixed(true)
+                                            .build();
+                                    apartmentBills.add(rentBill);
+                                }
+
+//                                check if garbage is null before doing this
+                                if (garbage != null) {
+                                    ApartmentBill garbageBill = ApartmentBill.builder()
+                                            .billType(ApartmentBillType.garbage)
+                                            .billAmount(Long.parseLong(garbage))
+                                            .apartment(apartment)
+                                            .fixed(true)
+                                            .build();
+                                    apartmentBills.add(garbageBill);
+                                }
+
+//                                check if serviceCharge is null before doing this
+                                if (serviceCharge != null) {
+                                    ApartmentBill serviceChargeBill = ApartmentBill.builder()
+                                            .billType(ApartmentBillType.service_charge)
+                                            .billAmount(Long.parseLong(serviceCharge))
+                                            .apartment(apartment)
+                                            .fixed(true)
+                                            .build();
+                                    apartmentBills.add(serviceChargeBill);
+                                }
+                                LOGGER.info("Bills added");
+//                                create Tenant
+                                Tenant tenant = Tenant.builder()
+                                        .name(tenantName)
+                                        .phoneNumber(phoneNumber)
+                                        .apartment(apartment)
+                                        .build();
+
+                                tenant = tenantRepository.save(tenant);
+
+                                apartment.setApartmentBills(apartmentBills);
+                                apartment.setTenant(tenant);
+                                apartment.setOccupancy(ApartmentOccupancy.occupied);
+
+                                apartmentRepository.save(apartment);
+                                apartments.add(apartment);
+                            }
+                            floor.setApartments(apartments);
+                            floorRepository.save(floor);
+                            LOGGER.info("Tenant added");
+                        }
+                    } else {
+                        LOGGER.info("Block not found");
+                        // If the block does not exist, create a new one
+                        Block block = Block.builder()
+                                .name(blockName)
+                                .property(property)
+                                .build();
+                        block = blockRepository.save(block);
+                        blocks.add(block);
+                        property.setBlocks(blocks);
+                        propertyRepository.save(property);
+
+                        LOGGER.info("Property block information updated");
+                        Set<Floor> floors = block.getFloors();
+                        // Create a new Floor within the newly created Block
+                        Floor floor = Floor.builder()
+                                .name(floorName)
+                                .block(block)
+                                .build();
+                        floor = floorRepository.save(floor);
+                        floors.add(floor);
+                        block.setFloors(floors);
+                        blockRepository.save(block);
+                        LOGGER.info("Block floor information updated");
+
+                        Set<Apartment> apartments = floor.getApartments();
+
+                        // Create a new Apartment within the newly created Floor
+                        Apartment apartment = Apartment.builder()
+                                .name(apartmentName)
+                                .floor(floor)
+                                .build();
+                        apartment = apartmentRepository.save(apartment);
+
+                        // Add ApartmentBills for rent, garbage, and service charge if they are not null
+                        Set<ApartmentBill> apartmentBills = new HashSet<>();
+                        if (rent != null) {
+                            ApartmentBill rentBill = ApartmentBill.builder()
+                                    .billType(ApartmentBillType.rent)
+                                    .billAmount(Long.parseLong(rent))
+                                    .apartment(apartment)
+                                    .fixed(true)
+                                    .build();
+                            apartmentBills.add(rentBill);
+                        }
+                        if (garbage != null) {
+                            ApartmentBill garbageBill = ApartmentBill.builder()
+                                    .billType(ApartmentBillType.garbage)
+                                    .billAmount(Long.parseLong(garbage))
+                                    .apartment(apartment)
+                                    .fixed(true)
+                                    .build();
+                            apartmentBills.add(garbageBill);
+                        }
+                        if (serviceCharge != null) {
+                            ApartmentBill serviceChargeBill = ApartmentBill.builder()
+                                    .billType(ApartmentBillType.service_charge)
+                                    .billAmount(Long.parseLong(serviceCharge))
+                                    .apartment(apartment)
+                                    .fixed(true)
+                                    .build();
+                            apartmentBills.add(serviceChargeBill);
+                        }
+                        apartment.setApartmentBills(apartmentBills);
+
+                        // Create a Tenant and associate it with the Apartment
+                        Tenant tenant = Tenant.builder()
+                                .name(tenantName)
+                                .phoneNumber(phoneNumber)
+                                .apartment(apartment)
+                                .build();
+                        tenant = tenantRepository.save(tenant);
+                        apartment.setTenant(tenant);
+                        apartment.setOccupancy(ApartmentOccupancy.occupied);
+
+                        // Save the updated Apartment
+                        apartmentRepository.save(apartment);
+                        apartments.add(apartment);
+                        floor.setApartments(apartments);
+                        floorRepository.save(floor);
+
+                        LOGGER.info("Floor apartment information updated");
+                    }
+                }
+
+                Map<String, Object> response = responseHandler.generateResponse("success", properties, null);
+                return ResponseEntity.status(HttpStatus.OK).body(response);
 
             }
-//            }
 
             LOGGER.info("Create Property: Complete");
 
@@ -222,91 +493,45 @@ public class PropertyService {
         }
     }
 
+    private void processSheet(XSSFSheet sheet, AuthenticationResponse token, Set<Property> properties, List<Tenant> tenants) {
+        // Process the header row
+        Row headerRow = sheet.getRow(0);
+        List<String> headers = new ArrayList<>();
+        for (Cell cell : headerRow) {
+            headers.add(cell.getStringCellValue());
+        }
 
-    public Block registerBlock(Block block) {
-        try {
-            LOGGER.info("Register Block: Start");
-            Set<Floor> savedFloors = new HashSet<Floor>();
-            for (Floor floor : block.getFloors()) {
-                Floor savedFloor = registerFloor(floor);
-                savedFloors.add(savedFloor);
+        // Process the rest of the rows
+        Iterator<Row> rowIterator = sheet.iterator();
+        rowIterator.next(); // Skip the header row
+        while (rowIterator.hasNext()) {
+            Row row = rowIterator.next();
+            Map<String, String> rowData = extractRowData(row, headers);
+            processRowData(rowData, token, properties, tenants);
+        }
+    }
+
+    private Map<String, String> extractRowData(Row row, List<String> headers) {
+        Map<String, String> rowData = new HashMap<>();
+        for (int i = 0; i < headers.size(); i++) {
+            Cell cell = row.getCell(i);
+            if (cell != null) {
+                String columnHeader = headers.get(i);
+                if (columnHeader != null) {
+                    String cellValue = cell.getStringCellValue().trim(); // Trim whitespaces
+                    rowData.put(columnHeader, cellValue);
+                }
             }
-            block.setFloors(savedFloors);
-            return blockRepository.save(block);
-        } catch (Exception e) {
-            LOGGER.error("Error registering block: {}", e.getMessage());
         }
-        return null;
+        return rowData;
     }
 
-    public Floor registerFloor(Floor floor) {
-        try {
-            LOGGER.info("Register Floor: {}", floor.getName());
-            Set<Apartment> apartments = new HashSet<Apartment>();
-            for (Apartment apartment : floor.getApartments()) {
-                Apartment savedApartment = registerApartment(apartment);
-                apartments.add(savedApartment);
-            }
-            floor.setApartments(apartments);
-            return floorRepository.save(floor);
-        } catch (Exception e) {
-            LOGGER.error("Error registering floor: {}", e.getMessage());
-        }
-        return null;
-    }
-
-    //    register fixed apartment bills eg rent
-//    register tenant
-//    edit tenant feature later for when a tenant moves/vacates
-    public Apartment registerApartment(Apartment apartment) {
-        LOGGER.info("Register Apartment: {}", apartment.getName() + " of floor: " + apartment.getFloor().getName());
-        try {
-            Set<ApartmentBill> fixedBills = new HashSet<ApartmentBill>();
-            Tenant tenant = registerTenant(apartment.getTenant());
-            for (ApartmentBill bill : apartment.getApartmentBills()) {
-                ApartmentBill savedBill = registerApartmentBill(bill);
-                fixedBills.add(savedBill);
-            }
-            apartment.setApartmentBills(fixedBills);
-            apartment.setTenant(tenant);
-
-            return apartmentRepository.save(apartment);
-        } catch (Exception e) {
-            LOGGER.error("Error registering apartment: {}", e.getMessage());
-        }
-        return null;
-    }
-
-    public ApartmentBill registerApartmentBill(ApartmentBill apartmentBill) {
-        try {
-            LOGGER.info("Register Apartment bill: {}", apartmentBill.getBillType() + " of apartment: " + apartmentBill.getApartment().getName());
-            return apartmentBillRepository.save(apartmentBill);
-        } catch (Exception e) {
-            LOGGER.error("Error registering apartment: {}", e.getMessage());
-        }
-        return null;
+    private void processRowData(Map<String, String> rowData, AuthenticationResponse token, Set<Property> properties, List<Tenant> tenants) {
+        // Your logic to process rowData, including creating or updating Property, Block, Floor, Apartment, and Tenant entities
+        // This method should contain the logic that was previously duplicated in your original code
     }
 
 
-    public Tenant registerTenant(Tenant tenant) {
-        try {
-            LOGGER.info("Register Tenant: {}", tenant.getName() + " of apartment: " + tenant.getApartment().getName());
-            return tenantRepository.save(tenant);
-        } catch (Exception e) {
-            LOGGER.error("Error registering tenant: {}", e.getMessage());
-        }
-        return null;
-    }
-
-    public PaymentAccount registerPaymentAccount(PaymentAccount paymentAccount) {
-        try {
-            LOGGER.info("Register PaymentAccount", paymentAccount.getShortCode() + " of apartment: " + paymentAccount.getProperty().getName());
-            return paymentAccountRepository.save(paymentAccount);
-        } catch (Exception e) {
-            LOGGER.error("Error registering PaymentAccount: {}", e.getMessage());
-        }
-        return null;
-    }
 
 
 }

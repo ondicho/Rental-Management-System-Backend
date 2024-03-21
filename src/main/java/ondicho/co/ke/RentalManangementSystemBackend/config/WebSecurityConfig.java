@@ -54,8 +54,8 @@ public class WebSecurityConfig {
                         "/webjars/**",
                         "auth/**"
                 ).permitAll()
-                .requestMatchers("/auth/**").permitAll()
-                .requestMatchers("/auth-admin/**","/payment/**").permitAll()
+                .requestMatchers("/auth-admin/**","/auth/**").permitAll()
+                .requestMatchers("/payment/**","/property/**").permitAll()
                 .anyRequest().authenticated();
 
 //        http.authorizeHttpRequests(auth -> auth.anyRequest().permitAll());

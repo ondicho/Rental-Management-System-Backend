@@ -28,4 +28,7 @@ public class CreateUserDTO {
 
     private Boolean isEnabled;
 
+    private Boolean isLandlord;
+
+
 }

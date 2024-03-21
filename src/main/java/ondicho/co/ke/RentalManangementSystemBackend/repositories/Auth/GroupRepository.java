@@ -13,7 +13,7 @@ import java.util.Optional;
 public interface GroupRepository  extends JpaRepository<Group,Integer> {
 
     @Query(
-            value="SELECT g.* from users u where lower(g.name) like %:name%",
+            value="SELECT g.* from groups g where g.name like %:name%",
             nativeQuery = true)
     Optional<Group> findbyName(@Param(("name")) String name);
 }

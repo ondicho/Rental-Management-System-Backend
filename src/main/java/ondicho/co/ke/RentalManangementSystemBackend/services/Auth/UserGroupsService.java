@@ -69,7 +69,7 @@ public class UserGroupsService {
 
                 roleRepository.save(role);
                 Map<String, Object> response = responseHandler.generateResponse("success", role, null);
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+                return ResponseEntity.status(HttpStatus.OK).body(response);
             }
             Map<String, Object> response = responseHandler.generateResponse("fail", null, "Group :" + roleDTO.getGroup() + " doesnot exist");
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);

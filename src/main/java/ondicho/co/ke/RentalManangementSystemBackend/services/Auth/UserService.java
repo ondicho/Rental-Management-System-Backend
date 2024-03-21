@@ -49,6 +49,7 @@ public class UserService {
                         .email(userDTO.getEmail())
                         .password(passwordEncoder.encode(userDTO.getPassword1().toLowerCase()))
                         .isEnabled(true)
+                        .isLandlord(userDTO.getIsLandlord())
                         .roles(roleSet)
                         .build();
 

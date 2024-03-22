@@ -39,7 +39,7 @@ public class UserService {
     public ResponseEntity<Map<String, Object>> createUser(CreateUserDTO userDTO) {
 
         try {
-            if (userDTO.getPassword1().equalsIgnoreCase(userDTO.getPassword2())) {
+            if (userDTO.getPassword1().equals(userDTO.getPassword2())) {
                 Set<Role> roleSet = new HashSet<>();
                 Optional<Role> role = roleRepository.findRoleByName(userDTO.getRole());
                 role.ifPresent(roleSet::add);
@@ -47,7 +47,7 @@ public class UserService {
                         .firstName(userDTO.getFirstName())
                         .lastName(userDTO.getLastName())
                         .email(userDTO.getEmail())
-                        .password(passwordEncoder.encode(userDTO.getPassword1().toLowerCase()))
+                        .password(passwordEncoder.encode(userDTO.getPassword1()))
                         .isEnabled(true)
                         .isLandlord(userDTO.getIsLandlord())
                         .roles(roleSet)

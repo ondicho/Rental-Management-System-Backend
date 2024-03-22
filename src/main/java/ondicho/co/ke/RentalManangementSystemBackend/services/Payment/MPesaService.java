@@ -31,7 +31,7 @@ public class MPesaService {
     public MPesaService(
             @Value("${daraja.sandbox.registerUrl}") String registerUrlEndpoint
     ) {
-        this.registerUrlEndpoint = registerUrlEndpoint;
+        MPesaService.registerUrlEndpoint = registerUrlEndpoint;
     }
 
     @Autowired

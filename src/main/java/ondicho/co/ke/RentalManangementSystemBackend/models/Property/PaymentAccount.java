@@ -24,6 +24,7 @@ public class PaymentAccount {
     private String accountNumber;
 
     @Column(nullable = false)
+    @Enumerated(EnumType.ORDINAL)
     private PaymentAccountType accountType;
 
     @Column(nullable = false)

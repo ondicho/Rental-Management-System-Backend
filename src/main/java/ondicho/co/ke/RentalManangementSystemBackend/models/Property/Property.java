@@ -4,6 +4,7 @@ package ondicho.co.ke.RentalManangementSystemBackend.models.Property;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.util.HashSet;
 import java.util.Set;
 
 @Getter
@@ -33,7 +34,8 @@ public class Property {
 
     // Relationship with PaymentAccounts
     @OneToMany(mappedBy = "property", fetch = FetchType.LAZY, cascade = CascadeType.ALL)
-    private Set<PaymentAccount> paymentAccounts;
+    private Set<PaymentAccount> paymentAccounts=new HashSet<>();
+
 
 
 }
